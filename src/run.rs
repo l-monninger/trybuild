@@ -46,6 +46,10 @@ struct Report {
     created_wip: usize,
 }
 
+pub(crate) fn normalize_feature_key(feature: &str) -> String {
+    feature.to_string().replace("/", "-")
+}
+
 impl Runner {
     pub(crate) fn run(&mut self) {
         let mut tests = expand_globs(&self.tests);
@@ -257,6 +261,19 @@ impl Runner {
         }
 
         let mut features = source_manifest.features;
+
+        // insert the extended features into the features map
+        for feature in tests.iter().flat_map(|t| t.test.features.iter()) {
+            let normalized_feature = normalize_feature_key(feature.to_string_lossy().as_ref());
+            if !features.contains_key(&normalized_feature) {
+                features.insert(
+                    normalized_feature,
+                    vec![feature.to_os_string().to_string_lossy().to_string()],
+                );
+            }
+        }
+
+        // rewrite optional features
         for (feature, enables) in &mut features {
             enables.retain(|en| {
                 let Some(dep_name) = en.strip_prefix("dep:") else {
