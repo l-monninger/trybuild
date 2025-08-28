@@ -1,7 +1,7 @@
 use crate::directory::Directory;
 use crate::error::{Error, Result};
 use crate::manifest::Name;
-use crate::run::Project;
+use crate::run::{normalize_feature_key, Project};
 use crate::rustflags;
 use serde_derive::Deserialize;
 use std::ffi::OsString;
@@ -128,7 +128,7 @@ fn extend_features(extended_features: &[OsString]) -> Vec<String> {
             .chain(
                 extended_features
                     .iter()
-                    .map(|f| f.to_string_lossy().to_string()),
+                    .map(|f| normalize_feature_key(f.to_string_lossy().as_ref())),
             )
             .collect()
     }

@@ -262,17 +262,6 @@ impl Runner {
 
         let mut features = source_manifest.features;
 
-        // insert the extended features into the features map
-        for feature in tests.iter().flat_map(|t| t.test.features.iter()) {
-            let normalized_feature = normalize_feature_key(feature.to_string_lossy().as_ref());
-            if !features.contains_key(&normalized_feature) {
-                features.insert(
-                    normalized_feature,
-                    vec![feature.to_os_string().to_string_lossy().to_string()],
-                );
-            }
-        }
-
         // rewrite optional features
         for (feature, enables) in &mut features {
             enables.retain(|en| {
@@ -293,6 +282,17 @@ impl Runner {
             });
             if has_lib_target {
                 enables.insert(0, format!("{}/{}", crate_name, feature));
+            }
+        }
+
+        // insert the extended features into the features map
+        for feature in tests.iter().flat_map(|t| t.test.features.iter()) {
+            let normalized_feature = normalize_feature_key(feature.to_string_lossy().as_ref());
+            if !features.contains_key(&normalized_feature) {
+                features.insert(
+                    normalized_feature,
+                    vec![feature.to_os_string().to_string_lossy().to_string()],
+                );
             }
         }
 
