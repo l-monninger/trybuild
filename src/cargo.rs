@@ -1,9 +1,10 @@
 use crate::directory::Directory;
 use crate::error::{Error, Result};
 use crate::manifest::Name;
-use crate::run::Project;
+use crate::run::{normalize_feature_key, Project};
 use crate::rustflags;
 use serde_derive::Deserialize;
+use std::ffi::OsString;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
@@ -113,7 +114,32 @@ pub(crate) fn build_dependencies(project: &mut Project) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn build_test(project: &Project, name: &Name) -> Result<Output> {
+// Constructs the command arguments for an extended set of features
+//
+// This is for adding features that are not in the project file, but with which the user wants to try a build.
+// It could be rolled into the normal features function, but I've kept it separate for now for clarity.
+fn extend_features(extended_features: &[OsString]) -> Vec<String> {
+    if extended_features.is_empty() {
+        vec![]
+    } else {
+        // --features and convert from OsString to String
+        vec!["--features".to_owned()]
+            .into_iter()
+            .chain(
+                extended_features
+                    .iter()
+                    .map(|f| normalize_feature_key(f.to_string_lossy().as_ref())),
+            )
+            .collect()
+    }
+}
+
+pub(crate) fn build_test(
+    project: &Project,
+    name: &Name,
+    envs: &[(OsString, OsString)],
+    extended_features: &[OsString],
+) -> Result<Output> {
     let _ = cargo(project)
         .arg("clean")
         .arg("--package")
@@ -129,9 +155,11 @@ pub(crate) fn build_test(project: &Project, name: &Name) -> Result<Output> {
         .arg("--bin")
         .arg(name)
         .args(features(project))
+        .args(extend_features(extended_features)) // this creates a second --features flag which cargo currently supports
         .arg("--quiet")
         .arg("--color=never")
         .arg("--message-format=json")
+        .envs(envs.iter().map(|(k, v)| (k.as_os_str(), v.as_os_str())))
         .output()
         .map_err(Error::Cargo)
 }

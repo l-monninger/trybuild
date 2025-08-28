@@ -21,7 +21,16 @@ pub(crate) fn expand_globs(tests: &[Test]) -> Vec<ExpandedTest> {
                 Ok(paths) => {
                     let expected = test.expected;
                     for path in paths {
-                        set.insert(Test { path, expected }, None, true);
+                        set.insert(
+                            Test {
+                                path,
+                                expected,
+                                envs: test.envs.clone(),
+                                features: test.features.clone(),
+                            },
+                            None,
+                            true,
+                        );
                     }
                 }
                 Err(error) => set.insert(test.clone(), Some(error), false),

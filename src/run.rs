@@ -46,6 +46,10 @@ struct Report {
     created_wip: usize,
 }
 
+pub(crate) fn normalize_feature_key(feature: &str) -> String {
+    feature.to_string().replace("/", "-")
+}
+
 impl Runner {
     pub(crate) fn run(&mut self) {
         let mut tests = expand_globs(&self.tests);
@@ -257,6 +261,8 @@ impl Runner {
         }
 
         let mut features = source_manifest.features;
+
+        // rewrite optional features
         for (feature, enables) in &mut features {
             enables.retain(|en| {
                 let Some(dep_name) = en.strip_prefix("dep:") else {
@@ -276,6 +282,17 @@ impl Runner {
             });
             if has_lib_target {
                 enables.insert(0, format!("{}/{}", crate_name, feature));
+            }
+        }
+
+        // insert the extended features into the features map
+        for feature in tests.iter().flat_map(|t| t.test.features.iter()) {
+            let normalized_feature = normalize_feature_key(feature.to_string_lossy().as_ref());
+            if !features.contains_key(&normalized_feature) {
+                features.insert(
+                    normalized_feature,
+                    vec![feature.to_os_string().to_string_lossy().to_string()],
+                );
             }
         }
 
@@ -377,7 +394,7 @@ impl Test {
         let src_path = CanonicalPath::new(&project.source_dir.join(&self.path));
         path_map.insert(src_path.clone(), (name, self));
 
-        let output = cargo::build_test(project, name)?;
+        let output = cargo::build_test(project, name, &self.envs, &self.features)?;
         let parsed = parse_cargo_json(project, &output.stdout, &path_map);
         let fallback = Stderr::default();
         let this_test = parsed.stderrs.get(&src_path).unwrap_or(&fallback);
