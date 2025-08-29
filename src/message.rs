@@ -102,6 +102,21 @@ pub(crate) fn write_stderr_wip(wip_path: &Path, stderr_path: &Path, stderr: &str
     println!();
 }
 
+pub(crate) fn write_warn_wip(wip_path: &Path, warn_path: &Path, warn: &str) {
+    let wip_path = wip_path.to_string_lossy();
+    let warn_path = warn_path.to_string_lossy();
+
+    term::bold_color(Yellow);
+    println!("wip");
+    println!();
+    print!("NOTE");
+    term::reset();
+    println!(": writing the following output to `{}`.", wip_path);
+    println!("Move this file to `{}` to accept it as correct.", warn_path,);
+    snippet(Yellow, warn);
+    println!();
+}
+
 pub(crate) fn overwrite_stderr(stderr_path: &Path, stderr: &str) {
     let stderr_path = stderr_path.to_string_lossy();
 
@@ -112,6 +127,19 @@ pub(crate) fn overwrite_stderr(stderr_path: &Path, stderr: &str) {
     term::reset();
     println!(": writing the following output to `{}`.", stderr_path);
     snippet(Yellow, stderr);
+    println!();
+}
+
+pub(crate) fn overwrite_warn(warn_path: &Path, warn: &str) {
+    let warn_path = warn_path.to_string_lossy();
+
+    term::bold_color(Yellow);
+    println!("wip");
+    println!();
+    print!("NOTE");
+    term::reset();
+    println!(": writing the following output to `{}`.", warn_path);
+    snippet(Yellow, warn);
     println!();
 }
 

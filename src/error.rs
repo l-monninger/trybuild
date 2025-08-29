@@ -18,12 +18,14 @@ pub(crate) enum Error {
     Pattern(PatternError),
     ProjectDir,
     ReadStderr(io::Error),
+    ReadWarn(io::Error),
     RunFailed,
     ShouldNotHaveCompiled,
     TomlDe(toml::de::Error),
     TomlSer(toml::ser::Error),
     UpdateVar(OsString),
     WriteStderr(io::Error),
+    WriteWarn(io::Error),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -57,6 +59,8 @@ impl Display for Error {
                 var.to_string_lossy(),
             ),
             WriteStderr(e) => write!(f, "failed to write stderr file: {}", e),
+            WriteWarn(e) => write!(f, "failed to write warn file: {}", e),
+            ReadWarn(e) => write!(f, "failed to read warn file: {}", e),
         }
     }
 }

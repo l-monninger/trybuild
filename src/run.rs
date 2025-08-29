@@ -437,6 +437,17 @@ impl Test {
             return Err(Error::CargoFail);
         }
 
+        let warnings_outcome =
+            self.check_warnings(project, name, success, build_stdout, variations)?;
+
+        match warnings_outcome {
+            Outcome::Passed => {}
+            Outcome::CreatedWip => {
+                message::fail_output(Warn, build_stdout);
+                return Ok(Outcome::CreatedWip);
+            }
+        }
+
         let mut output = cargo::run_test(project, name)?;
         output.stdout.splice(..0, build_stdout.bytes());
         message::output(preferred, &output);
@@ -450,7 +461,7 @@ impl Test {
     fn check_compile_fail(
         &self,
         project: &Project,
-        _name: &Name,
+        name: &Name,
         success: bool,
         build_stdout: &str,
         variations: &Variations,
@@ -466,7 +477,7 @@ impl Test {
 
         let stderr_path = self.path.with_extension("stderr");
 
-        if !stderr_path.exists() {
+        let _error_outcome = if !stderr_path.exists() {
             let outcome = match project.update {
                 Update::Wip => {
                     let wip_dir = Path::new("wip");
@@ -488,14 +499,82 @@ impl Test {
                 }
             };
             message::fail_output(Warn, build_stdout);
+            Ok(outcome)
+        } else {
+            let expected = fs::read_to_string(&stderr_path)
+                .map_err(Error::ReadStderr)?
+                .replace("\r\n", "\n");
+
+            // we unwrap the mismatch because if there is a failure we should short-circuit
+            // overwrites will match for warnings.
+            if variations.any(|stderr| expected == stderr) {
+                message::ok();
+                return Ok(Outcome::Passed);
+            } else {
+                match project.update {
+                    Update::Wip => {
+                        message::mismatch(&expected, preferred);
+                        Err(Error::Mismatch)
+                    }
+                    Update::Overwrite => {
+                        message::overwrite_stderr(&stderr_path, preferred);
+                        fs::write(stderr_path, preferred).map_err(Error::WriteStderr)?;
+                        Ok(Outcome::Passed)
+                    }
+                }
+            }
+        }?;
+
+        // We don't actually need _error_outcome, because project update should match.
+        // And, if the there's a genuine mismatch, we're good to short-circuit
+
+        // Byt the same token, we can unwrap the warnings check
+        // Further, at this point, the error outcome will be passed--all other branches have terminated.
+        self.check_warnings(project, name, success, build_stdout, variations)
+    }
+
+    fn check_warnings(
+        &self,
+        project: &Project,
+        _name: &Name,
+        _success: bool,
+        build_stdout: &str,
+        variations: &Variations,
+    ) -> Result<Outcome> {
+        let preferred = variations.preferred();
+
+        let warn_path = self.path.with_extension("warn");
+
+        if !warn_path.exists() {
+            let outcome = match project.update {
+                Update::Wip => {
+                    let wip_dir = Path::new("wip");
+                    fs::create_dir_all(wip_dir)?;
+                    let gitignore_path = wip_dir.join(".gitignore");
+                    fs::write(gitignore_path, "*\n")?;
+                    let warn_name = warn_path
+                        .file_name()
+                        .unwrap_or_else(|| OsStr::new("test.warn"));
+                    let wip_path = wip_dir.join(warn_name);
+                    message::write_warn_wip(&wip_path, &warn_path, preferred);
+                    fs::write(wip_path, preferred).map_err(Error::WriteWarn)?;
+                    Outcome::CreatedWip
+                }
+                Update::Overwrite => {
+                    message::overwrite_warn(&warn_path, preferred);
+                    fs::write(warn_path, preferred).map_err(Error::WriteWarn)?;
+                    Outcome::Passed
+                }
+            };
+            message::fail_output(Warn, build_stdout);
             return Ok(outcome);
         }
 
-        let expected = fs::read_to_string(&stderr_path)
-            .map_err(Error::ReadStderr)?
+        let expected = fs::read_to_string(&warn_path)
+            .map_err(Error::ReadWarn)?
             .replace("\r\n", "\n");
 
-        if variations.any(|stderr| expected == stderr) {
+        if variations.any(|warn| expected == warn) {
             message::ok();
             return Ok(Outcome::Passed);
         }
@@ -506,8 +585,8 @@ impl Test {
                 Err(Error::Mismatch)
             }
             Update::Overwrite => {
-                message::overwrite_stderr(&stderr_path, preferred);
-                fs::write(stderr_path, preferred).map_err(Error::WriteStderr)?;
+                message::overwrite_warn(&warn_path, preferred);
+                fs::write(warn_path, preferred).map_err(Error::WriteWarn)?;
                 Ok(Outcome::Passed)
             }
         }
