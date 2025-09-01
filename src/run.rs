@@ -439,14 +439,16 @@ impl Test {
             return Err(Error::CargoFail);
         }
 
-        let warnings_outcome =
-            self.check_warnings(project, name, success, build_stdout, variations)?;
+        if project.check_warnings {
+            let warnings_outcome =
+                self.check_warnings(project, name, success, build_stdout, variations)?;
 
-        match warnings_outcome {
-            Outcome::Passed => {}
-            Outcome::CreatedWip => {
-                message::fail_output(Warn, build_stdout);
-                return Ok(Outcome::CreatedWip);
+            match warnings_outcome {
+                Outcome::Passed => {}
+                Outcome::CreatedWip => {
+                    message::fail_output(Warn, build_stdout);
+                    return Ok(Outcome::CreatedWip);
+                }
             }
         }
 
@@ -532,7 +534,11 @@ impl Test {
 
         // Byt the same token, we can unwrap the warnings check
         // Further, at this point, the error outcome will be passed--all other branches have terminated.
-        self.check_warnings(project, name, success, build_stdout, variations)
+        if project.check_warnings {
+            self.check_warnings(project, name, success, build_stdout, variations)
+        } else {
+            Ok(Outcome::Passed)
+        }
     }
 
     fn check_warnings(

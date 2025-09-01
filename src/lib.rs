@@ -379,6 +379,17 @@ impl TestCases {
             check_warnings,
         });
     }
+
+    /// Checks if the compilation passes with warnings.
+    pub fn warn<P: AsRef<Path>>(&self, path: P) {
+        self.runner.borrow_mut().tests.push(Test {
+            path: path.as_ref().to_owned(),
+            expected: Expected::Pass,
+            envs: Vec::new(),
+            features: Vec::new(),
+            check_warnings: true,
+        });
+    }
 }
 
 impl RefUnwindSafe for TestCases {}
