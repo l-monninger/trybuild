@@ -33,6 +33,7 @@ pub(crate) struct Project {
     pub path_dependencies: Vec<PathDependency>,
     manifest: Manifest,
     pub keep_going: bool,
+    pub check_warnings: bool,
 }
 
 #[derive(Debug)]
@@ -182,6 +183,7 @@ impl Runner {
             path_dependencies,
             manifest,
             keep_going: false,
+            check_warnings: tests.iter().all(|t| t.test.check_warnings),
         })
     }
 

@@ -305,6 +305,7 @@ struct Test {
     expected: Expected,
     envs: Vec<(OsString, OsString)>,
     features: Vec<OsString>,
+    check_warnings: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -327,6 +328,7 @@ impl TestCases {
             expected: Expected::Pass,
             envs: Vec::new(),
             features: Vec::new(),
+            check_warnings: false,
         });
     }
 
@@ -335,6 +337,7 @@ impl TestCases {
         path: P,
         envs: impl IntoIterator<Item = (impl Into<OsString>, impl Into<OsString>)>,
         features: impl IntoIterator<Item = impl Into<OsString>>,
+        check_warnings: bool,
     ) {
         self.runner.borrow_mut().tests.push(Test {
             path: path.as_ref().to_owned(),
@@ -344,6 +347,7 @@ impl TestCases {
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect(),
             features: features.into_iter().map(|f| f.into()).collect(),
+            check_warnings,
         });
     }
 
@@ -353,6 +357,7 @@ impl TestCases {
             expected: Expected::CompileFail,
             envs: Vec::new(),
             features: Vec::new(),
+            check_warnings: false,
         });
     }
 
@@ -361,6 +366,7 @@ impl TestCases {
         path: P,
         envs: impl IntoIterator<Item = (impl Into<OsString>, impl Into<OsString>)>,
         features: impl IntoIterator<Item = impl Into<OsString>>,
+        check_warnings: bool,
     ) {
         self.runner.borrow_mut().tests.push(Test {
             path: path.as_ref().to_owned(),
@@ -370,6 +376,7 @@ impl TestCases {
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect(),
             features: features.into_iter().map(|f| f.into()).collect(),
+            check_warnings,
         });
     }
 }
